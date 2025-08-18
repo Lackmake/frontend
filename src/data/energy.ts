@@ -347,6 +347,8 @@ const getEnergyData = async (
   prefs: EnergyPreferences,
   start: Date,
   end?: Date,
+  // @ts-ignore
+  period?: "hour" | "day" | "week" | "month",
   compare?: boolean
 ): Promise<EnergyData> => {
   const info = await getEnergyInfo(hass);
@@ -388,14 +390,15 @@ const getEnergyData = async (
   const allStatIDs = [...energyStatIds, ...waterStatIds];
 
   const dayDifference = differenceInDays(end || new Date(), start);
-  const period =
-    isFirstDayOfMonth(start) &&
+  period =
+    period ??
+    (isFirstDayOfMonth(start) &&
     (!end || isLastDayOfMonth(end)) &&
     dayDifference > 35
       ? "month"
       : dayDifference > 2
         ? "day"
-        : "hour";
+        : "hour");
 
   const lengthUnit = hass.config.unit_system.length || "";
   const energyUnits: StatisticsUnitConfiguration = {
@@ -565,10 +568,15 @@ const getEnergyData = async (
 export interface EnergyCollection extends Collection<EnergyData> {
   start: Date;
   end?: Date;
+  period?: "hour" | "day" | "week" | "month";
   compare?: boolean;
   prefs?: EnergyPreferences;
   clearPrefs(): void;
-  setPeriod(newStart: Date, newEnd?: Date): void;
+  setPeriod(
+    newStart: Date,
+    newEnd?: Date,
+    newPeriod?: "hour" | "day" | "week" | "month"
+  ): void;
   setCompare(compare: boolean): void;
   _refreshTimeout?: number;
   _updatePeriodTimeout?: number;
@@ -642,6 +650,7 @@ export const getEnergyDataCollection = (
         collection.prefs,
         collection.start,
         collection.end,
+        collection.period,
         collection.compare
       );
     }
@@ -709,14 +718,20 @@ export const getEnergyDataCollection = (
   collection.clearPrefs = () => {
     collection.prefs = undefined;
   };
-  collection.setPeriod = (newStart: Date, newEnd?: Date) => {
+  collection.setPeriod = (
+    newStart: Date,
+    newEnd?: Date,
+    newPeriod?: "hour" | "day" | "week" | "month"
+  ) => {
     if (collection._updatePeriodTimeout) {
       clearTimeout(collection._updatePeriodTimeout);
       collection._updatePeriodTimeout = undefined;
     }
     collection.start = newStart;
     collection.end = newEnd;
+    collection.period = newPeriod;
     if (
+      !newPeriod &&
       collection.start.getTime() ===
         calcDate(new Date(), startOfDay, hass.locale, hass.config).getTime() &&
       collection.end?.getTime() ===

@@ -18,6 +18,7 @@ import type { PropertyValues } from "lit";
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import memoizeOne from "memoize-one";
+import "../../../components/ha-button-toggle-group";
 import {
   calcDate,
   calcDateProperty,
@@ -65,6 +66,8 @@ export class HuiEnergyPeriodSelector extends SubscribeMixin(LitElement) {
   @property({ attribute: "collection-key" }) public collectionKey?: string;
 
   @property({ type: Boolean, reflect: true }) public narrow?;
+
+  @state() private _period: "hour" | "day" | "week" = "day";
 
   @state() _startDate?: Date;
 
@@ -148,6 +151,33 @@ export class HuiEnergyPeriodSelector extends SubscribeMixin(LitElement) {
 
     return html`
       <div class="row">
+        <div class="period">
+          <ha-button-toggle-group
+            .value=${this._period}
+            @value-changed=${this._handlePeriodChange}
+            .buttons=${[
+              {
+                value: "hour",
+                label: this.hass.localize(
+                  "ui.panel.lovelace.components.energy_period_selector.hour"
+                ),
+              },
+              {
+                value: "day",
+                label: this.hass.localize(
+                  "ui.panel.lovelace.components.energy_period_selector.day"
+                ),
+              },
+              {
+                value: "week",
+                label: this.hass.localize(
+                  "ui.panel.lovelace.components.energy_period_selector.week"
+                ),
+              },
+            ]}
+          >
+          </ha-button-toggle-group>
+        </div>
         <div class="label">
           ${simpleRange === "day"
             ? this.narrow
@@ -288,11 +318,16 @@ export class HuiEnergyPeriodSelector extends SubscribeMixin(LitElement) {
     }
   );
 
+  private _handlePeriodChange(ev: CustomEvent) {
+    this._period = ev.detail.value;
+    this._updateCollectionPeriod();
+  }
+
   private _updateCollectionPeriod() {
     const energyCollection = getEnergyDataCollection(this.hass, {
       key: this.collectionKey,
     });
-    energyCollection.setPeriod(this._startDate!, this._endDate!);
+    energyCollection.setPeriod(this._startDate!, this._endDate!, this._period);
     energyCollection.refresh();
   }
 
@@ -329,6 +364,8 @@ export class HuiEnergyPeriodSelector extends SubscribeMixin(LitElement) {
 
   private _pickNow() {
     if (!this._startDate) return;
+
+    this._period = "day";
 
     const range = this._simpleRange(
       this._startDate,
@@ -461,6 +498,10 @@ export class HuiEnergyPeriodSelector extends SubscribeMixin(LitElement) {
       display: flex;
       align-items: center;
     }
+    .period {
+      display: flex;
+      align-items: center;
+    }
     :host .time-handle {
       display: flex;
       justify-content: flex-end;
@@ -476,8 +517,8 @@ export class HuiEnergyPeriodSelector extends SubscribeMixin(LitElement) {
       align-items: center;
       justify-content: flex-end;
       font-size: 20px;
-      margin-left: auto;
-      margin-inline-start: auto;
+      margin-left: 8px;
+      margin-inline-start: 8px;
       margin-inline-end: initial;
     }
     :host([narrow]) .label {

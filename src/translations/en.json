@@ -7601,6 +7601,9 @@
             "now": "Now",
             "previous": "Previous",
             "next": "Next",
+            "hour": "Hour",
+            "day": "Day",
+            "week": "Week",
             "compare": "Compare data"
           }
         },
